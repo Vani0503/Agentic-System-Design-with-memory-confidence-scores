@@ -45,3 +45,7 @@ Layer 2 — Tool boundary as hard guardrail
 The agent literally cannot answer what it has no tool for. If there's no geo breakdown tool, it cannot return geo data no matter what it's asked. The tool library is a hard constraint, not just a soft instruction.
 Layer 3 — A small set of curated failure cases for testing
 Not to handle every case — but to test that the guardrails actually work. Like unit tests. You pick 5-10 representative cases that stress-test the boundary and run them before every deployment.
+
+next stage:
+Multi-agent system (orchestrator + specialist agents)
+Replace failure cases with scope-based guardrails + automated test suite against guardrails
