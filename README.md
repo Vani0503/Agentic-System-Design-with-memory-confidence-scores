@@ -150,7 +150,77 @@ WHAT TO DO AFTER OVERRIDING:
    - Check tool descriptions — did agent skip a needed tool?
    - Check system prompt — did guardrails fire incorrectly?
 
+Stage 2 — Complete Learning Log
+1. Memory Architecture
+What we built: Custom summary memory using a list + GPT compression call — no LangChain needed.
+How it works:
 
+investigation_memory[] stores every past run as {goal, conclusion}
+get_memory_context() sends all past runs to GPT and asks it to compress into 3-4 sentences
+save_to_memory() appends to the list after every run
+Memory is injected into the system prompt at the start of every new run
+
+Key insight: Memory has two operations — READ at the start, WRITE at the end. Together they create continuity across sessions.
+
+2. Memory Wasn't Being Used — First Attempt Failed
+What happened: Memory was saved correctly but agent still ran all 4 tools on the follow-up question.
+Why: The investigation protocol said "always call funnel summary first" — this rigid instruction overrode the memory context.
+Fix: Added one rule at the top of the protocol:
+
+"First check memory — if root cause already confirmed, skip to the specific tool needed"
+
+Result: Tool calls dropped from 4 to 1 on follow-up questions.
+Key insight: Instructions in the system prompt compete with each other. A rigid protocol overrides soft context like memory unless you explicitly tell the agent to prioritise memory first.
+
+3. Confidence Scoring
+What we built: Agent self-assigns HIGH / MEDIUM / LOW at the end of every answer.
+How it works:
+
+System prompt instructs agent to always end with CONFIDENCE: HIGH/MEDIUM/LOW + REASON
+parse_confidence() does simple string matching — no intelligence, pure text scan
+Score reflects agent's own reasoning about data quality and tool coverage
+
+Key insight: Confidence is not mathematically calculated — it's the LLM self-assessing in natural language. It can be wrong. In Stage 3 a separate reviewer agent will replace self-scoring.
+
+4. Human Override Gate
+What we built: input() pause that fires only on LOW confidence.
+How it works:
+
+HIGH and MEDIUM pass through automatically
+LOW prints a warning and waits for human to type yes/no
+Investigation saved to memory regardless of human decision
+
+Key insight: The gate fires based on uncertainty, not correctness. A correct finding with LOW confidence still gets human review. Safety is about what the agent doesn't know, not just what it found.
+
+5. Guardrails vs Failure Cases
+What we started with: 3 explicit failure cases (F1, F2, F3)
+What we learned: Doesn't scale. Real systems have thousands of possible out-of-scope questions.
+Better approach: Define SCOPE in the system prompt. Everything outside = LOW confidence automatically. Failure cases become a test suite to verify guardrails work.
+Key insight: Guardrails define the fence. Failure cases test the fence. You need both but they serve different purposes.
+
+6. Tool Boundary as Hard Guardrail
+Key insight: The agent literally cannot answer what it has no tool for. No geo tool = no geo data, no matter how the question is phrased. Tool library is a hard constraint on top of the soft constraint of the system prompt.
+
+7. Failure Cases — What Actually Happened
+CaseExpectedGotPass?F1 — Pricing/competitor questionLOW confidence, no tools calledLOW confidence, 0 tool calls, gate fired✅ PerfectF2 — Geographic questionLOW confidence, no geo hallucinationLOW confidence, 0 tool calls, gate fired✅ PerfectF3 — Vague "something seems off"MEDIUM confidenceHIGH confidence⚠️ Partial
+F3 gap explained: Agent scores confidence based on data clarity, not question clarity. Data was unambiguous so it said HIGH — even though the question was vague. A separate reviewer agent in Stage 3 will catch this.
+
+8. What This System Cannot Do Yet
+
+Confidence self-scoring can be overconfident (F3 showed this)
+Memory is session-only — restarting Colab wipes it
+Single agent doing everything — no separation of diagnosis vs action
+No automated test suite — failure cases run manually
+No persistent logging — reasoning traces lost after session
+
+
+Coming in Stage 3
+
+Multi-agent: orchestrator + diagnosis agent + action agent
+Separate reviewer agent replaces self-scored confidence
+Scope-based guardrails with automated test suite
+Persistent memory across sessions
+Separation of diagnosis and action with independent approval
 
 next stage:
 Multi-agent system (orchestrator + specialist agents)
