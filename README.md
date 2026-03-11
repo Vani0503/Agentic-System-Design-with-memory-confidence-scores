@@ -103,7 +103,13 @@ Scope-based guardrails replace explicit failure cases
 Automated test suite runs against guardrails before every deployment
 Separate agent reviews primary agent's conclusion instead of self-scoring confidence
 
+7. Failure Cases — Results
 
+Guardrails worked perfectly for out-of-scope questions (F1, F2) — agent correctly refused to answer without calling any tools
+F3 revealed a gap: agent scores confidence based on data clarity, not question clarity. A vague question with clear data gets HIGH instead of MEDIUM
+Fix for Stage 3: separate reviewer agent that scores confidence based on both data quality AND question specificity
+
+This is the honest limitation we discussed — the agent self-scores confidence based on data clarity, not question clarity. The data was clear so it said HIGH, even though the question was ambiguous.
 
 next stage:
 Multi-agent system (orchestrator + specialist agents)
