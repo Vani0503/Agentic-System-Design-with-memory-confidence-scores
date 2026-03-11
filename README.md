@@ -111,6 +111,47 @@ Fix for Stage 3: separate reviewer agent that scores confidence based on both da
 
 This is the honest limitation we discussed — the agent self-scores confidence based on data clarity, not question clarity. The data was clear so it said HIGH, even though the question was ambiguous.
 
+
+WHEN HUMANS SHOULD OVERRIDE THE AGENTIC SYSTEM
+================================================
+
+ALWAYS OVERRIDE WHEN:
+1. Confidence is LOW — agent does not have enough data or tool
+   coverage to conclude
+2. Anomaly detection finds NO clear date — could be gradual
+   degradation or a data pipeline issue, not a real product bug
+3. Recommended action would affect >10% of users or >$100K revenue
+4. Diagnosis contradicts what engineering already knows
+   (e.g. no deploys happened on the anomaly date)
+5. Two back-to-back investigations give different root causes
+   for the same symptom
+
+CONSIDER OVERRIDING WHEN (MEDIUM confidence):
+1. Only one segment breakdown supports the conclusion —
+   the other shows mixed signals
+2. Anomaly period is very short (1-2 days) — could be noise,
+   not a real issue
+3. Past memory shows a different root cause for similar symptoms
+
+DO NOT OVERRIDE WHEN (HIGH confidence):
+1. Anomaly confirmed, clear start date, one segment clearly
+   broken, other segment healthy
+2. Consistent findings across BOTH device AND traffic breakdowns
+3. Past memory aligns with current findings
+
+WHAT TO DO AFTER OVERRIDING:
+1. Note the reason for override in your incident log
+2. Run the specific tool manually to sanity-check the data
+3. Check with engineering about recent deploys on the anomaly date
+4. If the agent was wrong, debug in this order:
+   - Read reasoning trace — did agent call right tools?
+   - Run tools manually — did they return correct data?
+   - Check data freshness — is the dataset stale?
+   - Check tool descriptions — did agent skip a needed tool?
+   - Check system prompt — did guardrails fire incorrectly?
+
+
+
 next stage:
 Multi-agent system (orchestrator + specialist agents)
 Replace failure cases with scope-based guardrails + automated test suite against guardrails
